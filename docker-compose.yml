@@ -1,0 +1,41 @@
+version: '3.8'
+services:
+  cnc-pick-place:
+    build: .
+    container_name: cnc-pick-place
+    restart: unless-stopped
+    privileged: true
+    ports:
+      - "5000:5000"
+    group_add:
+      - dialout
+      - video
+    environment:
+      - PYTHONUNBUFFERED=1
+      - LIBCAMERA_IPA_MODULE_PATH=/usr/lib/aarch64-linux-gnu/libcamera/ipa
+      - LIBCAMERA_IPA_PROXY_PATH=/usr/lib/aarch64-linux-gnu/libcamera/ipa
+      - LIBCAMERA_IPA_FORCE_ISOLATION=0
+      - LIBCAMERA_IPA_PROXY_PATH=/usr/libexec/aarch64-linux-gnu/libcamera
+    devices:
+      - "/dev/video0:/dev/video0"
+      - "/dev/video13:/dev/video13"
+      - "/dev/video14:/dev/video14"
+      - "/dev/video15:/dev/video15"
+      - "/dev/video21:/dev/video21"
+      - "/dev/video22:/dev/video22"
+    volumes:
+      - ./app:/app
+      - ./entrypoint.sh:/app/entrypoint.sh
+      - /run/udev:/run/udev:ro
+      - /usr/lib/python3/dist-packages/picamera2:/usr/lib/python3/dist-packages/picamera2
+      - /usr/lib/aarch64-linux-gnu/libcamera:/usr/lib/aarch64-linux-gnu/libcamera
+      - /usr/lib/aarch64-linux-gnu/libcamera/ipa:/usr/lib/aarch64-linux-gnu/libcamera/ipa
+      - /usr/libexec/aarch64-linux-gnu/libcamera:/usr/libexec/aarch64-linux-gnu/libcamera
+      - /usr/share/libcamera:/usr/share/libcamera
+      - /usr/lib/python3/dist-packages/libcamera:/usr/lib/python3/dist-packages/libcamera
+    command: bash /app/entrypoint.sh
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

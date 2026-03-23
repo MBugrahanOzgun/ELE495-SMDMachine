@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CNC Pick & Place Kontrol Paneli</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.min.js"></script>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--card2:#222636;--border:#2a2e3d;--text:#e4e7ef;--muted:#8b8fa3;--dim:#5c6072;--accent:#4f8ff7;--green:#34d399;--red:#f87171;--yellow:#fbbf24;--orange:#fb923c;--purple:#a78bfa}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column}
+.header{background:var(--card);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between}
+.header h1{font-size:16px;font-weight:600;display:flex;align-items:center;gap:8px}
+.conn-bar{display:flex;gap:12px;font-size:11px}
+.cd{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle}
+.cd.on{background:var(--green);box-shadow:0 0 6px rgba(52,211,153,.3)}.cd.off{background:var(--red)}
+.main{display:grid;grid-template-columns:1fr 310px;grid-template-rows:auto auto auto 1fr;gap:10px;padding:10px;flex:1;max-width:1440px;margin:0 auto;width:100%}
+.card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px}
+.ct{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin-bottom:8px}
+.comp-area{grid-column:1}
+.comp-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.ci{background:var(--bg);border:2px solid var(--border);border-radius:6px;padding:8px;text-align:center;transition:all .3s}
+.ci .cn{font-size:16px;font-weight:700}.ci .cv{font-size:10px;color:var(--dim);min-height:14px}.ci .ce{font-size:9px;color:var(--dim);margin-top:1px}
+.ci.placed{border-color:var(--green);box-shadow:0 0 8px rgba(52,211,153,.2)}.ci.placed .cn{color:var(--green)}
+.ci.measured{border-color:var(--purple);box-shadow:0 0 8px rgba(167,139,250,.2)}.ci.measured .cn{color:var(--purple)}
+.ci.active{border-color:var(--yellow);box-shadow:0 0 8px rgba(251,191,36,.2);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.prog{width:100%;height:4px;background:var(--bg);border-radius:2px;margin-bottom:8px;overflow:hidden}
+.prog-f{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));transition:width .5s}
+.rcol{grid-column:2;grid-row:1/5;display:flex;flex-direction:column;gap:10px;overflow-y:auto;max-height:calc(100vh - 100px)}
+.cam-w{position:relative;background:#000;border-radius:6px;overflow:hidden;min-height:180px}
+.cam-w img{width:100%;display:block}.cam-off{display:flex;align-items:center;justify-content:center;min-height:180px;color:var(--dim);font-size:12px}
+.cam-b{position:absolute;top:5px;right:5px;font-size:9px;padding:2px 7px;border-radius:8px;font-weight:600;color:#fff}
+.cam-b.live{background:rgba(52,211,153,.85)}.cam-b.off{background:rgba(248,113,113,.85)}
+.sr{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}.sr:last-child{border:none}
+.sl{color:var(--muted)}.sv{font-weight:600;font-family:Consolas,monospace;font-size:11px}
+.pos-b{background:var(--bg);border-radius:5px;padding:6px;text-align:center;font-family:Consolas,monospace;font-size:12px;margin:6px 0}
+.pos-b .pa{margin:0 5px}.pos-b .pa span{color:var(--muted);font-size:10px}
+.sb{display:inline-block;padding:2px 7px;border-radius:10px;font-size:10px;font-weight:600;text-transform:uppercase}
+.st-idle{background:rgba(52,211,153,.12);color:var(--green)}.st-run{background:rgba(79,143,247,.12);color:var(--accent)}
+.st-hold{background:rgba(251,191,36,.12);color:var(--yellow)}.st-alarm{background:rgba(248,113,113,.12);color:var(--red)}
+.st-disconnected{background:rgba(92,96,114,.12);color:var(--dim)}
+.meas-b{background:var(--bg);border-radius:5px;padding:10px;text-align:center;margin:6px 0}
+.meas-v{font-size:22px;font-weight:700;font-family:Consolas,monospace;color:var(--accent)}
+.meas-l{font-size:10px;color:var(--dim);margin-top:2px}
+.meas-raw{background:var(--bg);border-radius:5px;padding:6px 8px;font-family:Consolas,monospace;font-size:10px;color:var(--muted);max-height:80px;overflow-y:auto;margin-top:6px;line-height:1.5}
+.vb{background:var(--bg);border-radius:5px;padding:8px;margin:6px 0;font-size:11px}
+.vr{display:flex;justify-content:space-between;padding:2px 0}.vl{color:var(--muted)}.vv{font-family:Consolas,monospace;font-weight:600;font-size:11px}
+.vv.ok{color:var(--green)}.vv.fail{color:var(--red)}
+.ctrl-area{grid-column:1}
+.br{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px}
+.btn{padding:7px 14px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text);font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:4px}
+.btn:hover{background:var(--card2)}.btn:disabled{opacity:.3;cursor:not-allowed}
+.btn-g{border-color:var(--green);color:var(--green)}.btn-r{border-color:var(--red);color:var(--red)}
+.btn-b{border-color:var(--accent);color:var(--accent)}.btn-o{border-color:var(--orange);color:var(--orange)}
+.gc{display:flex;gap:5px;margin-top:6px}
+.gc input{flex:1;padding:6px 8px;background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:Consolas,monospace;font-size:11px}
+.gc input:focus{outline:none;border-color:var(--accent)}
+.log-area{grid-column:1}
+.log-b{background:var(--bg);border-radius:5px;padding:6px;height:180px;overflow-y:auto;font-family:Consolas,monospace;font-size:10px;line-height:1.6}
+.log-b::-webkit-scrollbar{width:4px}.log-b::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.lt{color:var(--dim);margin-right:5px}.l-info{color:var(--text)}.l-warning{color:var(--yellow)}.l-error{color:var(--red)}
+.footer{background:var(--card);border-top:1px solid var(--border);padding:8px 20px;text-align:center;font-size:11px;color:var(--muted)}
+.footer .names{font-weight:600;color:var(--text)}
+@media(max-width:900px){.main{grid-template-columns:1fr}.rcol{grid-column:1;grid-row:auto;max-height:none}.comp-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>⚙️ CNC Pick & Place Kontrol</h1>
+  <div class="conn-bar">
+    <span><span class="cd off" id="d-grbl"></span>GRBL (ACM0)</span>
+    <span><span class="cd off" id="d-test"></span>Test (USB0)</span>
+    <span><span class="cd off" id="d-cam"></span>Kamera</span>
+    <span><span class="cd off" id="d-yolo"></span>YOLO</span>
+  </div>
+</div>
+
+<div class="main">
+  <!-- Components -->
+  <div class="card comp-area">
+    <div class="ct">Komponent Durumu</div>
+    <div class="prog"><div class="prog-f" id="progress" style="width:0%"></div></div>
+    <div style="display:flex;gap:14px;margin-bottom:8px;font-size:9px;color:var(--muted)">
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--green);margin-right:3px;vertical-align:middle"></span>PCB'ye yerleşti</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--purple);margin-right:3px;vertical-align:middle"></span>Ölçüldü, slota geri bırakıldı</span>
+      <span><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--yellow);margin-right:3px;vertical-align:middle"></span>İşleniyor</span>
+    </div>
+    <div class="comp-grid" id="comp-grid"></div>
+  </div>
+
+  <!-- Right Column -->
+  <div class="rcol">
+    <!-- Camera -->
+    <div class="card">
+      <div class="ct">Canlı Kamera + YOLO Overlay</div>
+      <div class="cam-w" id="cam-w">
+        <div class="cam-off" id="cam-off">Kamera bağlı değil</div>
+        <img id="cam-img" style="display:none" />
+        <div class="cam-b off" id="cam-b">OFFLINE</div>
+      </div>
+    </div>
+
+    <!-- Machine -->
+    <div class="card">
+      <div class="ct">Makine Durumu</div>
+      <div class="sr"><span class="sl">Durum</span><span class="sb st-disconnected" id="m-st">DISCONNECTED</span></div>
+      <div class="pos-b" id="pos-b"><span class="pa">X <span>0.000</span></span><span class="pa">Y <span>0.000</span></span><span class="pa">Z <span>0.000</span></span></div>
+      <div class="sr"><span class="sl">İşlem</span><span class="sv" id="m-step">—</span></div>
+      <div class="sr"><span class="sl">Slot</span><span class="sv" id="m-slot">—</span></div>
+    </div>
+
+    <!-- Test Station Measurement -->
+    <div class="card">
+      <div class="ct">Test İstasyonu — Son Ölçüm</div>
+      <div class="meas-b">
+        <div class="meas-v" id="meas-v">—</div>
+        <div class="meas-l" id="meas-l">Bekleniyor</div>
+      </div>
+      <div class="sr"><span class="sl">ADC</span><span class="sv" id="t-adc">—</span></div>
+      <div class="sr"><span class="sl">Vout</span><span class="sv" id="t-vout">—</span></div>
+      <div class="sr"><span class="sl">Direnç (Ω)</span><span class="sv" id="t-res">—</span></div>
+      <div class="sr"><span class="sl">Diyot</span><span class="sv" id="t-diode">—</span></div>
+      <div class="ct" style="margin-top:8px">Arduino Ham Çıktı</div>
+      <div class="meas-raw" id="t-raw">—</div>
+    </div>
+
+    <!-- Vision -->
+    <div class="card">
+      <div class="ct">Görüntü İşleme (YOLO)</div>
+      <div class="vb">
+        <div class="vr"><span class="vl">Son Tespit</span><span class="vv" id="v-cls">—</span></div>
+        <div class="vr"><span class="vl">Güven</span><span class="vv" id="v-conf">—</span></div>
+        <div class="vr"><span class="vl">Toplam</span><span class="vv" id="v-cnt">—</span></div>
+      </div>
+      <div class="ct" style="margin-top:8px">Yerleştirme Doğrulama</div>
+      <div class="vb">
+        <div class="vr"><span class="vl">Pad</span><span class="vv" id="p-pad">—</span></div>
+        <div class="vr"><span class="vl">Durum</span><span class="vv" id="p-st">—</span></div>
+        <div class="vr"><span class="vl">Doğruluk</span><span class="vv" id="p-acc">—</span></div>
+        <div class="vr"><span class="vl">Mesafe (px)</span><span class="vv" id="p-dist">—</span></div>
+        <div class="vr"><span class="vl">IoU</span><span class="vv" id="p-iou">—</span></div>
+        <div class="vr"><span class="vl">Hata %</span><span class="vv" id="p-err">—</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="card ctrl-area">
+    <div class="ct">Kontrol</div>
+    <div class="br">
+      <button class="btn btn-b" id="btn-conn" onclick="cmdConnect()">🔌 Bağlan</button>
+      <button class="btn" onclick="cmdDisconnect()">⛓️‍💥 Bağlantıyı Kes</button>
+    </div>
+    <div class="br">
+      <button class="btn btn-g" id="btn-start" onclick="cmdStart()" disabled>▶ Başlat</button>
+      <button class="btn btn-r" id="btn-stop" onclick="cmdStop()" disabled>⏹ Durdur</button>
+      <button class="btn" id="btn-pause" onclick="cmdPause()" disabled>⏸ Duraklat</button>
+      <button class="btn" id="btn-resume" onclick="cmdResume()" disabled>▶ Devam</button>
+    </div>
+    <div class="br">
+      <button class="btn" onclick="cmdHome()">🏠 Eve Git</button>
+      <button class="btn btn-o" onclick="cmdUnlock()">🔓 Kilit Aç</button>
+      <button class="btn btn-r" onclick="cmdReset()">🔄 Reset</button>
+    </div>
+    <div class="gc">
+      <input type="text" id="gc-in" placeholder="Komut Gönder" onkeypress="if(event.key==='Enter')sendGcode()">
+      <button class="btn" onclick="sendGcode()">Gönder</button>
+    </div>
+  </div>
+
+  <!-- Log -->
+  <div class="card log-area">
+    <div class="ct">Konsol</div>
+    <div class="log-b" id="log-b"></div>
+  </div>
+</div>
+
+<div class="footer">
+  <span class="names">Mustafa Buğrahan Özgün &nbsp;•&nbsp; Mert Şenel &nbsp;•&nbsp; Ayşenur Kurt</span>
+  <br>CNC Pick & Place Kontrol Sistemi — 2026
+</div>
+
+<script>
+const COMPS=[
+  {id:'R1',exp:'10KΩ'},{id:'R2',exp:'33KΩ'},{id:'R3',exp:'100KΩ'},{id:'R4',exp:'4.7KΩ'},
+  {id:'R5',exp:'1KΩ'},{id:'R6',exp:'50-200Ω'},{id:'D1',exp:'Diyot'},{id:'D2',exp:'Diyot'}
+];
+const cg=document.getElementById('comp-grid');
+COMPS.forEach(c=>{const e=document.createElement('div');e.className='ci';e.id='c-'+c.id;
+e.innerHTML=`<div class="cn">${c.id}</div><div class="cv" id="v-${c.id}">—</div><div class="ce">${c.exp}</div>`;cg.appendChild(e);});
+
+const socket=io();
+let camOn=false;
+
+socket.on('connect',()=>addLog('Web arayüzü bağlandı','info'));
+socket.on('disconnect',()=>addLog('Web bağlantısı kesildi','error'));
+
+socket.on('connection_status',d=>{
+  dt('d-grbl',d.grbl);dt('d-test',d.tester);dt('d-cam',d.camera);dt('d-yolo',d.yolo);
+  camOn=!!d.camera;updCam();updBtns(d.grbl&&d.tester);
+});
+
+socket.on('state_update',d=>{
+  const st=d.grbl_state||'Disconnected';const se=document.getElementById('m-st');
+  se.textContent=st.toUpperCase();se.className='sb st-'+st.toLowerCase().replace(/[^a-z]/g,'');
+  document.getElementById('m-step').textContent=d.current_step||'—';
+  document.getElementById('m-slot').textContent=d.current_slot>0?d.current_slot+'/8':'—';
+  const n=Object.keys(d.placed||{}).length;
+  document.getElementById('progress').style.width=(n/8*100)+'%';
+  COMPS.forEach(c=>{const el=document.getElementById('c-'+c.id);const vl=document.getElementById('v-'+c.id);
+    if(d.placed&&d.placed[c.id]){el.className='ci placed';if(d.measurements&&d.measurements[c.id])vl.textContent=d.measurements[c.id];}
+    else el.className='ci';
+  });
+  document.getElementById('btn-stop').disabled=!d.running;
+  document.getElementById('btn-pause').disabled=!d.running||d.paused;
+  document.getElementById('btn-resume').disabled=!d.paused;
+});
+
+socket.on('position_update',p=>{
+  document.getElementById('pos-b').innerHTML=
+    `<span class="pa">X <span>${p.x.toFixed(3)}</span></span>`+
+    `<span class="pa">Y <span>${p.y.toFixed(3)}</span></span>`+
+    `<span class="pa">Z <span>${p.z.toFixed(3)}</span></span>`;
+});
+
+socket.on('measurement',d=>{
+  document.getElementById('meas-v').textContent=d.value;
+  document.getElementById('meas-l').textContent='Slot '+d.slot;
+});
+
+// Test İstasyonu detaylı ölçüm
+socket.on('test_measurement',d=>{
+  document.getElementById('meas-v').textContent=d.display;
+  document.getElementById('meas-l').textContent='Slot '+d.slot;
+  document.getElementById('t-adc').textContent=d.adc!=null?d.adc.toFixed(1):'—';
+  document.getElementById('t-vout').textContent=d.vout!=null?d.vout.toFixed(4)+' V':'—';
+  document.getElementById('t-res').textContent=d.resistance!=null?d.resistance.toFixed(1)+' Ω':'—';
+  const dEl=document.getElementById('t-diode');
+  if(d.diode){dEl.textContent=d.diode;dEl.style.color=d.diode==='DUZ'?'var(--green)':'var(--red)';}
+  else{dEl.textContent='—';dEl.style.color='';}
+  // Ham çıktı
+  const raw=document.getElementById('t-raw');
+  raw.textContent=d.raw_lines?d.raw_lines.join('\n'):'—';
+});
+
+socket.on('component_placed',d=>{
+  const el=document.getElementById('c-'+d.name);
+  if(el){
+    // "ölçüldü" içeriyorsa → mor (ölçüldü ama PCB'ye konmadı, slota geri bırakıldı)
+    if(d.value&&d.value.includes('ölçüldü')){el.className='ci measured';}
+    else{el.className='ci placed';}
+    document.getElementById('v-'+d.name).textContent=d.value;
+  }
+});
+
+socket.on('vision_detection',d=>{
+  document.getElementById('v-cls').textContent=d.class||'—';
+  document.getElementById('v-conf').textContent=d.score!=null?(d.score*100).toFixed(1)+'%':'—';
+  document.getElementById('v-cnt').textContent=d.total_detections||'—';
+});
+
+socket.on('placement_verify',d=>{
+  document.getElementById('p-pad').textContent=d.pad||'—';
+  const s=document.getElementById('p-st');s.textContent=d.status||'—';
+  s.className='vv '+(d.status==='OK'?'ok':d.status==='FAIL'?'fail':'');
+  document.getElementById('p-acc').textContent=d.accuracy!=null?d.accuracy.toFixed(1)+'%':'—';
+  document.getElementById('p-dist').textContent=d.distance_px!=null?d.distance_px.toFixed(1):'—';
+  document.getElementById('p-iou').textContent=d.iou!=null?d.iou.toFixed(4):'—';
+  document.getElementById('p-err').textContent=d.error_pct!=null?d.error_pct.toFixed(2)+'%':'—';
+});
+
+socket.on('log',d=>addLog(d.message,d.level,d.time));
+socket.on('process_finished',d=>{addLog('🏁 '+d.message,'info');document.getElementById('btn-start').disabled=false;});
+
+function dt(id,on){document.getElementById(id).className='cd '+(on?'on':'off');}
+function addLog(m,lv='info',t=null){
+  const b=document.getElementById('log-b');const tm=t||new Date().toLocaleTimeString('tr-TR');
+  const l=document.createElement('div');l.innerHTML=`<span class="lt">${tm}</span><span class="l-${lv}">${m}</span>`;
+  b.appendChild(l);b.scrollTop=b.scrollHeight;while(b.children.length>500)b.removeChild(b.firstChild);
+}
+function updBtns(ok){document.getElementById('btn-start').disabled=!ok;document.getElementById('btn-conn').textContent=ok?'✅ Bağlı':'🔌 Bağlan';}
+function updCam(){
+  const img=document.getElementById('cam-img'),off=document.getElementById('cam-off'),bd=document.getElementById('cam-b');
+  if(camOn){img.src='/api/camera/stream';img.style.display='block';off.style.display='none';bd.textContent='LIVE';bd.className='cam-b live';}
+  else{img.src='';img.style.display='none';off.style.display='flex';bd.textContent='OFFLINE';bd.className='cam-b off';}
+}
+function cmdConnect(){socket.emit('cmd_connect');}
+function cmdDisconnect(){socket.emit('cmd_disconnect');}
+function cmdStart(){socket.emit('cmd_start');document.getElementById('btn-start').disabled=true;}
+function cmdStop(){socket.emit('cmd_stop');}
+function cmdPause(){socket.emit('cmd_pause');}
+function cmdResume(){socket.emit('cmd_resume');}
+function cmdHome(){socket.emit('cmd_home');}
+function cmdUnlock(){socket.emit('cmd_unlock');}
+function cmdReset(){socket.emit('cmd_reset');}
+function sendGcode(){const i=document.getElementById('gc-in'),c=i.value.trim();if(c){socket.emit('cmd_gcode',{command:c});i.value='';}}
+</script>
+</body>
+</html>

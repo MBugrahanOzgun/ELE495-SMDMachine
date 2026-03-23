@@ -1,0 +1,9 @@
+flask==3.0.0
+flask-socketio==5.3.6
+pyserial==3.5
+eventlet==0.35.1
+opencv-python-headless>=4.10.0
+onnxruntime==1.22.0
+numpy>=2.0.0
+picamera2
+pykms
