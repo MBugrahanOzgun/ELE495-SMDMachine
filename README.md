@@ -8,23 +8,23 @@ Aşağıda projenin detaylarını içeren örnek bir **README.md** dosyası yer 
 
 Bu proje, masaüstü bir CNC makinesini otomatik bir SMD dizgi makinesine dönüştüren tam kapsamlı bir kontrol yazılımıdır. Sistem, bileşenleri belirlenen slotlardan alır, test istasyonunda elektriksel karakteristiklerini doğrular (direnç değeri, diyot yönü vb.) ve ardından görüntü işleme desteğiyle PCB üzerindeki doğru koordinatlara yerleştirir.
 
-## 🚀 Özellikler
+## Özellikler
 
-* **GRBL Entegrasyonu:** CNC hareketleri için standart GRBL protokolü üzerinden haberleşme.
+* **GRBL Entegrasyonu:** Eksen hareketleri için standart GRBL protokolü üzerinden haberleşme.
 * **Otomatik Test Süreci:** Bileşenler yerleştirilmeden önce test istasyonunda ölçülür ve tanımlanır.
 * **Görüntü İşleme (YOLO):** ONNX tabanlı YOLO modeli ile bileşen tespiti ve yerleştirme doğruluğu kontrolü (IoU ve piksel bazlı hata hesabı).
 * **Diyot Yönü Düzeltme:** Test istasyonunda diyotun ters olduğu tespit edilirse, makine diyotu otomatik olarak döndürür.
 * **Web Arayüzü:** Flask ve SocketIO tabanlı gerçek zamanlı izleme ve kontrol paneli.
 * **Docker Desteği:** Tüm bağımlılıkların kolayca kurulabilmesi için Dockerize edilmiş yapı.
 
-## 🛠 Donanım ve Yazılım Gereksinimleri
+## Donanım ve Yazılım Gereksinimleri
 
 * **Kontrolcü:** Arduino Uno (GRBL yüklü).
 * **Test İstasyonu:** Seri port üzerinden veri gönderen özel test devresi.
 * **Kamera:** Raspberry Pi kamera modülü veya standart USB WebCam.
 * **Yazılım:** Python 3.13+, Docker ve Docker Compose.
 
-## 📁 Proje Yapısı
+##  Proje Yapısı
 
 * `app/main.py`: Flask sunucusu ve ana WebSocket olayları.
 * `app/process.py`: Pick & Place iş akışının (algoritmanın) yönetildiği ana dosya.
@@ -32,7 +32,7 @@ Bu proje, masaüstü bir CNC makinesini otomatik bir SMD dizgi makinesine dönü
 * `app/vision/`: YOLO runtime ve görüntü işleme algoritmaları.
 * `app/config.py`: Koordinatların, hız ayarlarının ve port tanımlarının bulunduğu yapılandırma dosyası.
 
-## ⚙️ Kurulum ve Çalıştırma
+##  Kurulum ve Çalıştırma
 
 ### Docker ile Çalıştırma (Önerilen)
 
