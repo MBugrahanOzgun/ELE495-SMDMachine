@@ -67,6 +67,8 @@ Bu komut, gerekli Python kütüphanelerini (Flask, OpenCV, ONNX Runtime vb.) kur
 
 * Mustafa Buğrahan Özgün
 * Mert Şenel
+* Eda İnan
+* Ayşenur Kurt
 
 --- 
 
